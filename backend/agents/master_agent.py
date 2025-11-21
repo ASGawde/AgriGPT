@@ -154,7 +154,7 @@ Routing rules:
 - Fertilizer, soil, nutrients → CropAgent
 - Low yield, increase yield → YieldAgent
 - Watering interval → IrrigationAgent
-- Drip/micro irrigation subsidy → SubsidyAgent
+- Government schemes and subsidies → SubsidyAgent
 - If unsure → include CropAgent
 """
 
