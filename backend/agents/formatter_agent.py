@@ -1,53 +1,37 @@
+# backend/agents/formatter_agent.py
+
 from backend.services.text_service import query_groq_text
 from backend.agents.agri_agent_base import AgriAgentBase
 
 
 class FormatterAgent(AgriAgentBase):
-    """
-    AgriGPT Formatter Agent
-    -----------------------
-    Refines and cleans responses from other agents.
-    Ensures that outputs are concise, structured, and easy
-    to read for farmers or display in the frontend.
-    """
-
     name = "FormatterAgent"
 
-    def handle_query(self, text: str = None, image_path: str = None) -> str:
-        """
-        Takes raw text from other AgriGPT agents and reformats it
-        into short, clear, and farmer-friendly guidance.
+    # FIX: standardized signature
+    def handle_query(self, query: str = None, image_path: str = None) -> str:
 
-        Example usage:
-        - Called automatically by `master_agent` after main agent responses.
-        - Can also be used directly to refine or standardize text outputs.
-        """
-
-        # Handle missing text
-        if not text:
+        if not query or not query.strip():
             response = "No text was provided for formatting."
-            return self.respond_and_record("Empty input", response)
+            return self.respond_and_record("Empty text", response, image_path)
 
-        #  Construct Groq formatting prompt
         prompt = f"""
-        You are AgriGPT’s Formatter Assistant.
+        You are AgriGPT Formatter.
+        Improve the following content:
 
-        Your task is to clean, simplify, and reformat the following farming advice:
+        \"\"\"{query}\"\"\"
 
-        {text}
-
-        Please:
-        - Add a clear, short title (3–6 words)
-        - Use bullet points for clarity
-        - Keep sentences short and action-focused
-        - Include a one-line summary at the end
-        - Remove redundancy, formal tone, or complex phrasing
-
-        Keep the tone simple, supportive, and easy for farmers to read on mobile devices.
+        Rules:
+        - Add a 3–6 word title
+        - Use clear bullet points
+        - Short sentences
+        - Simple farmer-friendly tone
+        - End with a 1-line summary
+        - Remove fluff
         """
 
-        # Generate formatted version
-        formatted = query_groq_text(prompt)
+        try:
+            formatted = query_groq_text(prompt)
+        except Exception as e:
+            formatted = f"Error formatting text: {e}"
 
-        # Record and return formatted response
-        return self.respond_and_record(text, formatted, query_type="text")
+        return self.respond_and_record(query, formatted, image_path)

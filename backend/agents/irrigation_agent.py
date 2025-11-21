@@ -1,54 +1,82 @@
+# backend/agents/irrigation_agent.py
+
 from backend.services.text_service import query_groq_text
 from backend.agents.agri_agent_base import AgriAgentBase
 
 
 class IrrigationAgent(AgriAgentBase):
     """
-    AgriGPT Irrigation Agent
-    ------------------------
-    Provides region-independent irrigation planning and water management guidance.
-    Suggests optimal watering intervals, soil-moisture balance, and efficient
-    water-saving practices tailored for general farm conditions.
+    Irrigation Agent
+    -----------------
+    Provides expert guidance on:
+    - Watering intervals
+    - Soil moisture balance
+    - Drip/sprinkler operation
+    - Water-saving practices
     """
 
     name = "IrrigationAgent"
 
     def handle_query(self, query: str = None, image_path: str = None) -> str:
         """
-        Handles irrigation-related queries and returns concise, practical recommendations.
-
-        Example queries:
-        - "How often should I water tomato plants in summer?"
-        - "What’s the ideal soil moisture for paddy fields?"
-        - "How can I save water using drip irrigation?"
+        Handle irrigation-related queries.
+        Image input is ignored for this agent.
         """
 
-        #  Handle missing or empty query
-        if not query:
+        # ------------------------------------------------------
+        # CASE 0 — Missing query
+        # ------------------------------------------------------
+        if not query or not query.strip():
             response = (
-                "Please provide an irrigation-related question, "
-                "such as 'How often should I water my crop?' or 'Tips to save water using drip systems.'"
+                "Please ask an irrigation-related question such as:\n"
+                "- 'How often should I irrigate onions?'\n"
+                "- 'How to save water in drip irrigation?'\n"
+                "- 'How to adjust irrigation during summer?'\n"
             )
-            return self.respond_and_record("No query provided", response)
+            return self.respond_and_record(
+                "No query provided",
+                response,
+                image_path=image_path
+            )
 
-        #  Construct Groq prompt for irrigation planning
+        query_clean = query.strip()
+
+        # ------------------------------------------------------
+        # CASE 1 — Build LLM prompt
+        # ------------------------------------------------------
         prompt = f"""
-        You are AgriGPT, an expert irrigation planning assistant for farmers.
+        You are **AgriGPT – Irrigation Expert**.
 
-        The user asked: "{query}"
+        The farmer asked:
+        \"{query_clean}\"
 
-        Provide region-independent irrigation recommendations that include:
-        - Optimal watering intervals (daily, weekly, or based on crop stage)
-        - Soil moisture balance guidance (how to check and maintain)
-        - Practical water-saving methods (drip irrigation, mulching, scheduling)
-        - Mention how rainfall or weather forecasts can optimize watering.
+        Provide clear irrigation guidance covering:
+        - Correct watering intervals (daily / weekly / stage-based)
+        - Soil moisture management (how to check & maintain)
+        - Drip, sprinkler, and flood irrigation best practices
+        - Water-saving techniques (mulching, scheduling, pressure control)
+        - How to adjust irrigation during rainfall or extreme heat
+        - Soil-type adjustments (sandy, clay, loam)
 
-        Keep the response short, supportive, and written in clear farmer-friendly language.
-        Use bullet points or compact paragraphs for easy reading.
+        Use:
+        - Short sentences
+        - Bullet points
+        - Very simple farmer-friendly tone
         """
 
-        # Query Groq model for response
-        response = query_groq_text(prompt)
+        # ------------------------------------------------------
+        # CASE 2 — Query Groq safely
+        # ------------------------------------------------------
+        try:
+            result = query_groq_text(prompt)
+        except Exception as e:
+            result = f"Error generating irrigation advice: {e}"
 
-        # Log and return
-        return self.respond_and_record(query, response, query_type="text")
+        # ------------------------------------------------------
+        # CASE 3 — Log & Return
+        # ------------------------------------------------------
+        return self.respond_and_record(
+            query_clean,
+            result,
+            image_path=image_path
+        )

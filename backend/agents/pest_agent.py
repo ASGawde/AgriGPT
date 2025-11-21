@@ -5,62 +5,100 @@ from backend.agents.agri_agent_base import AgriAgentBase
 
 class PestAgent(AgriAgentBase):
     """
-    AgriGPT Pest & Disease Agent
-    -----------------------------
-    Detects crop pests or diseases using text or image analysis.
-    Suggests likely causes, visible symptoms, and simple organic or
-    chemical treatments with preventive guidance.
+    Pest & Disease Agent
+    --------------------
+    Handles:
+    - Image-based pest/disease identification (vision model)
+    - Text-based symptom diagnosis (LLM)
+
+    Provides:
+    - Likely diagnosis
+    - Key confirming symptoms
+    - Organic + chemical treatments
+    - Preventive steps
     """
 
     name = "PestAgent"
 
     def handle_query(self, query: str = None, image_path: str = None) -> str:
         """
-        Handles pest and disease detection requests.
-
-        - If an image is provided → runs image-based analysis.
-        - If only text is provided → interprets user description.
+        Handles both image and text pest diagnosis.
         """
 
-        #  Fallback: no input
+        # ------------------------------------------------------
+        # CASE 0 — No input
+        # ------------------------------------------------------
         if not query and not image_path:
-            response = (
-                "Please provide a crop image or describe the symptoms "
-                "(e.g., yellow leaves, black spots, or pest damage) "
-                "so I can help identify the issue."
+            msg = (
+                "Please upload a crop image or describe symptoms like "
+                "yellow leaves, white powder, brown patches, insects, or wilting."
             )
-            return self.respond_and_record("No input provided", response, query_type="text")
+            return self.respond_and_record(
+                "No input provided",
+                msg,
+                image_path=image_path
+            )
 
-        #  Case 1: Image-based pest or disease detection
+        # ------------------------------------------------------
+        # CASE 1 — IMAGE-BASED DIAGNOSIS
+        # ------------------------------------------------------
         if image_path:
-            prompt = """
-            Analyze this crop image and identify any visible pests, diseases, or nutrient deficiencies.
-            Describe:
-            - The likely problem or pest name
-            - Visual indicators or symptoms
-            - Recommended treatments (organic or chemical)
-            - Preventive measures to avoid recurrence
+            vision_prompt = """
+            You are AgriGPT Vision — a crop pest and disease detection expert.
 
-            Keep the explanation simple and actionable for farmers.
+            Analyze this crop image and return:
+
+            1. Likely problem/pest/disease name
+            2. Key visual symptoms visible in the photo
+            3. Organic control options (neem, soap, traps, pruning, etc.)
+            4. Chemical control (last resort) — only category name
+            5. Preventive steps for next season
+
+            Use:
+            - Simple language
+            - Bullet points
+            - Short sentences
             """
-            response = query_groq_image(image_path, prompt)
-            return self.respond_and_record("Image-based pest analysis", response, query_type="image")
 
-        #  Case 2: Text-based pest diagnosis
-        else:
-            prompt = f"""
-            You are AgriGPT, an intelligent pest and disease diagnosis assistant.
+            try:
+                result = query_groq_image(image_path, vision_prompt)
+            except Exception as e:
+                result = f"Error analyzing crop image: {e}"
 
-            The user described: "{query}"
+            return self.respond_and_record(
+                "Image-based pest analysis",
+                result,
+                image_path=image_path
+            )
 
-            Based on this description, identify the most likely pest, infection, or deficiency.
-            Include:
-            - The probable cause or pest name
-            - Key visible symptoms
-            - Recommended treatments (organic and chemical)
-            - Preventive care and maintenance tips
+        # ------------------------------------------------------
+        # CASE 2 — TEXT-BASED DIAGNOSIS
+        # ------------------------------------------------------
+        query_clean = query.strip()
 
-            Keep the response short, clear, and written in a farmer-friendly way.
-            """
-            response = query_groq_text(prompt)
-            return self.respond_and_record(query, response, query_type="text")
+        text_prompt = f"""
+        You are AgriGPT Pest Advisor.
+
+        The farmer described:
+        \"\"\"{query_clean}\"\"\"
+
+        Provide:
+        - Most likely pest/disease/deficiency
+        - Confirming symptoms
+        - Organic treatments (neem, soap, pruning, traps, bio-control)
+        - Chemical treatment (only category, with caution)
+        - Prevention tips
+
+        Use bullet points and simple language.
+        """
+
+        try:
+            result = query_groq_text(text_prompt)
+        except Exception as e:
+            result = f"Error generating pest diagnosis: {e}"
+
+        return self.respond_and_record(
+            query_clean,
+            result,
+            image_path=image_path
+        )

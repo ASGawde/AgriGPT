@@ -1,48 +1,49 @@
+# backend/agents/agri_agent_base.py
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional
+
 from backend.services.history_service import log_interaction
 
-class AgriAgentBase(ABC):
-    """
-    Base class for all AgriGPT agents.
-    Defines a consistent interface for handling text or image queries
-    and logging their responses for tracking and analysis.
-    """
 
+class AgriAgentBase(ABC):
     name: str = "AgriAgentBase"
 
-
-    # Abstract method — must be implemented by each agent
-
+    # Every agent must follow this signature
     @abstractmethod
-    def handle_query(self, query: Optional[str] = None, image_path: Optional[str] = None) -> str:
-        """
-        Process a user query (text, image, or both) and return the model's response.
-        Each derived agent (e.g., PestAgent, IrrigationAgent) implements this logic.
-        """
+    def handle_query(
+        self,
+        query: Optional[str] = None,
+        image_path: Optional[str] = None,
+    ) -> str:
         pass
 
-    # Log an interaction for traceability
+    # Detect type for logging
+    @staticmethod
+    def _detect_query_type(query, image_path):
+        if query and image_path:
+            return "multimodal"
+        if image_path:
+            return "image"
+        return "text"
 
-    def record(self, query: str, response: str, query_type: str = "text") -> None:
-        """
-        Save a structured log entry of the agent's interaction.
-        """
+    # Store logs
+    def record(self, query, response, query_type):
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "agent": self.name,
-            "query": query,
-            "response": response,
-            "type": query_type
+            "query": query or "",
+            "response": response[:5000],
+            "type": query_type,
         }
-        log_interaction(entry)
+        try:
+            log_interaction(entry)
+        except Exception:
+            pass
 
-    # Helper for subclasses: return + log in one step
-    def respond_and_record(self, query: str, response: str, query_type: str = "text") -> str:
-        """
-        Return a response and record it automatically.
-        Used by derived agents to keep code clean and consistent.
-        """
+    # Standard wrapper
+    def respond_and_record(self, query, response, image_path=None):
+        query_type = self._detect_query_type(query, image_path)
         self.record(query, response, query_type)
         return response

@@ -1,35 +1,64 @@
+# backend/agents/crop_agent.py
+
 from backend.services.text_service import query_groq_text
 from backend.agents.agri_agent_base import AgriAgentBase
 
 
 class CropAgent(AgriAgentBase):
-    """Agent for providing crop management and cultivation guidance."""
+    """Provides general crop management, fertilizer, soil, and cultivation advice."""
 
     name = "CropAgent"
 
     def handle_query(self, query: str = None, image_path: str = None) -> str:
         """
-        Handles user queries related to crop advice (fertilizer, soil, timing, yield).
-        This agent focuses on actionable, concise, farmer-friendly recommendations.
+        Handles crop-related text questions:
+        - Fertilizer dosage
+        - Soil preparation
+        - Crop growth timing
+        - Yield improvement
+        (Image input is ignored for this agent)
         """
 
-        if not query:
-            response = "Please provide a crop-related question (e.g., 'How to improve rice yield?')."
-            return self.respond_and_record("No query provided", response)
+        # Validate text input
+        if not query or not query.strip():
+            response = (
+                "Please ask a crop-related question. Example:\n"
+                "- 'How to improve my rice yield?'\n"
+                "- 'What fertilizer should I use for tomatoes?'"
+            )
+            return self.respond_and_record(
+                query="No query provided",
+                response=response,
+                image_path=image_path
+            )
 
+        # --- Construct AI prompt ---
         prompt = f"""
-        You are AgriGPT, an expert agriculture assistant.
-        The user asked: "{query}"
+        You are **AgriGPT – Crop Management Specialist**.
 
-        Provide clear, practical crop advice covering:
-        - Fertilizer use and dosage
-        - Soil preparation and nutrients
-        - Crop growth timing or yield improvement tips
-        Keep your tone short, supportive, and farmer-friendly.
+        The farmer asks:
+        "{query}"
+
+        Provide clear, simple, farmer-friendly advice.
+        MUST include:
+        - Fertilizer type + dosage
+        - Soil preparation tips
+        - Growth-stage guidance or yield improvement tips
+        - Specific actionable steps (not theory)
+        - Tamil Nadu/Kharif relevance if applicable
+
+        Keep it short, practical, and supportive.
         """
 
-        # Query Groq model for text response
-        response = query_groq_text(prompt)
+        # --- Query Groq API ---
+        try:
+            response = query_groq_text(prompt)
+        except Exception as e:
+            response = f"Error generating crop advice: {e}"
 
-        # Log and return
-        return self.respond_and_record(query, response, query_type="text")
+        # --- Log + return ---
+        return self.respond_and_record(
+            query=query,
+            response=response,
+            image_path=image_path
+        )

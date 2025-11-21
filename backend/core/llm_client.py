@@ -1,8 +1,13 @@
+# backend/core/llm_client.py
+
 """
 llm_client.py
--------------
-Creates a single LangChain ChatGroq client so every part of AgriGPT
-talks to Groq through the exact same, well-documented interface.
+--------------
+Central place to configure and cache the LangChain ChatGroq client.
+All agents share the same LLM instance to ensure:
+- consistent formatting
+- reduced latency
+- reduced API overhead
 """
 
 from __future__ import annotations
@@ -18,20 +23,26 @@ from backend.core.config import settings
 @lru_cache(maxsize=1)
 def get_llm() -> ChatGroq:
     """
-    Build (and cache) the LangChain ChatGroq client.
+    Build and cache the LangChain ChatGroq LLM client.
 
-    We cache this because spinning up the LangChain wrappers is a bit expensive
-    and we want every request to reuse the same underlying connection details.
+    Notes:
+    - Uses TEXT_MODEL_NAME from settings.
+    - Cached to avoid repeated client initialization.
+    - Low temperature ensures consistent routing.
     """
-    # These values come from .env via pydantic Settings, so nothing is hard-coded.
+
     api_key: Final[str] = settings.GROQ_API_KEY
-    model_name: Final[str] = settings.MODEL_NAME
+    model: Final[str] = settings.TEXT_MODEL_NAME  # THE CORRECT FIELD
 
-    # Return a ready-to-chat client with friendly defaults for farmer-facing advice.
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is missing in your environment variables.")
+
+    if not model:
+        raise RuntimeError("TEXT_MODEL_NAME is missing in your environment variables.")
+
     return ChatGroq(
-        groq_api_key=api_key,
-        model_name=model_name,
-        temperature=0.4,  # keep answers practical and consistent
-        max_tokens=800,
+        api_key=api_key,       # FIX: correct arg name
+        model=model,           # FIX: correct arg name
+        temperature=0.2,       # more deterministic routing
+        max_tokens=1500,       # agents often generate long guidance
     )
-
