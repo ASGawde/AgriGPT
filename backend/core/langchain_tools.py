@@ -20,35 +20,41 @@ from backend.agents.yield_agent import YieldAgent
 from backend.agents.formatter_agent import FormatterAgent
 
 
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------
 # Create ONE shared instance per agent (singleton pattern)
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------
 CROP_AGENT = CropAgent()
 PEST_AGENT = PestAgent()
 IRRIGATION_AGENT = IrrigationAgent()
 SUBSIDY_AGENT = SubsidyAgent()
 YIELD_AGENT = YieldAgent()
-FORMATTER_AGENT = FormatterAgent()       # <-- Used only AFTER routing
+FORMATTER_AGENT = FormatterAgent()     # only for final formatting step
 
 
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------
+# Non-routable agents → router must NEVER pick these
+# ---------------------------------------------------------
+NON_ROUTABLE_AGENTS = {"FormatterAgent"}
+
+
+# ---------------------------------------------------------
 # Global registry — master lookup for all agents
-# Used directly by master_agent router
-# ----------------------------------------------------------------------
+# (formatter included for final merge, but NOT routable)
+# ---------------------------------------------------------
 AGENT_REGISTRY: Dict[str, object] = {
     "CropAgent": CROP_AGENT,
     "PestAgent": PEST_AGENT,
     "IrrigationAgent": IRRIGATION_AGENT,
     "SubsidyAgent": SUBSIDY_AGENT,
     "YieldAgent": YIELD_AGENT,
-    "FormatterAgent": FORMATTER_AGENT,    # <-- Still available for router finalization
+    "FormatterAgent": FORMATTER_AGENT,
 }
 
 
-# ----------------------------------------------------------------------
-# Descriptions for LangChain routing (VERY IMPORTANT)
-# FormatterAgent MUST NOT be here.
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------
+# Descriptions for LangChain router
+# (FormatterAgent is intentionally EXCLUDED)
+# ---------------------------------------------------------
 AGENT_DESCRIPTIONS: List[Dict[str, str]] = [
     {
         "name": CROP_AGENT.name,
@@ -84,6 +90,5 @@ AGENT_DESCRIPTIONS: List[Dict[str, str]] = [
             "Government schemes: subsidies, loans, micro-irrigation programs, "
             "PM-Kisan, machinery subsidies, and eligibility rules."
         ),
-    }
+    },
 ]
-

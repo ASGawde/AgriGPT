@@ -9,27 +9,29 @@ from backend.core.llm_client import get_llm
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
-# Track server uptime
 START_TIME = time.time()
 
 
 @router.get("/")
 async def health_check():
     """
-    Health check endpoint.
-    Provides status, uptime, and checks if Groq API is reachable.
+    Health check endpoint with REAL Groq connectivity test.
     """
 
     uptime_sec = int(time.time() - START_TIME)
-    groq_status = "unknown"
 
-    # Check Groq LLM connectivity (safe and fast)
+    # ---------------------------------------------------
+    # Real-time GROQ API test
+    # ---------------------------------------------------
     try:
         llm = get_llm()
-        _ = llm.model_name  # access field to confirm object
+
+        # Send a tiny message to confirm the API actually works
+        _ = llm.invoke("ping")   # <-- REAL API CALL
+
         groq_status = "reachable"
-    except Exception:
-        groq_status = "unreachable"
+    except Exception as e:
+        groq_status = f"unreachable: {str(e)}"
 
     return {
         "status": "OK",

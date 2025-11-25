@@ -1,25 +1,44 @@
+# backend/agents/subsidy_agent.py
+
 from backend.services.text_service import query_groq_text
 from backend.agents.agri_agent_base import AgriAgentBase
 from backend.services.rag_service import rag_service
+import unicodedata
+
 
 class SubsidyAgent(AgriAgentBase):
     """
     Subsidy & Government Scheme Agent
     ---------------------------------
-    Provides clear and accurate information about:
-    - Central & State agricultural schemes
-    - Drip/micro irrigation subsidies
-    - Seed, fertilizer, machinery subsidies
-    - Crop insurance, Kisan Credit, PM-Kisan
-    - Eligibility + benefit amounts
+    Handles:
+    - Central/State schemes
+    - Irrigation subsidies
+    - Fertilizer/seed/machinery support
+    - PM-Kisan, KCC loan details
     """
 
     name = "SubsidyAgent"
 
+    def _sanitize_query(self, text: str) -> str:
+        """
+        Normalize Unicode and strip unsafe characters.
+        Prevents FAISS and embedding errors.
+        """
+        if not text:
+            return ""
+
+        # Normalize Tamil/Hindi/Unicode properly
+        text = unicodedata.normalize("NFKC", text)
+
+        # Remove hidden null chars or control chars
+        text = text.replace("\x00", "").replace("\u200c", "")
+
+        return text.strip()
+
     def handle_query(self, query: str = None, image_path: str = None) -> str:
         """
-        Handles subsidy and scheme-related queries.
-        Image input is ignored; this is a text-only agent.
+        Handles subsidy-related queries.
+        Image is ignored for this agent.
         """
 
         # ------------------------------------------------------
@@ -31,26 +50,30 @@ class SubsidyAgent(AgriAgentBase):
                 "- 'Drip irrigation subsidy in Tamil Nadu'\n"
                 "- 'PM-Kisan eligibility'\n"
                 "- 'Kisan Credit Card loan details'\n"
-                "- 'Fertilizer subsidy amount'"
+                "- 'Fertilizer subsidy amount'\n"
             )
-            return self.respond_and_record(
-                "No query provided",
-                msg,
-                image_path=image_path
-            )
+            return self.respond_and_record("No query provided", msg, image_path)
 
         # ------------------------------------------------------
-        # CASE 1 — Clean input
+        # CASE 1 — Sanitize input (FIXED)
         # ------------------------------------------------------
-        query_clean = query.strip()
+        query_clean = self._sanitize_query(query)
 
         # ------------------------------------------------------
-        # CASE 2 — RAG Retrieval
+        # CASE 2 — RAG Retrieval (FIXED with logging)
         # ------------------------------------------------------
-        retrieved_docs = rag_service.retrieve(query_clean)
         context_str = ""
+
+        try:
+            retrieved_docs = rag_service.retrieve(query_clean)
+        except Exception as e:
+            # Log error but continue gracefully
+            rag_error_msg = f"[RAG ERROR] Failed to retrieve documents: {e}"
+            context_str += f"\n\n{rag_error_msg}\n"
+            retrieved_docs = []
+
         if retrieved_docs:
-            context_str = "\n\n**Retrieved Official Information:**\n"
+            context_str += "\n\n**Retrieved Official Information:**\n"
             for i, doc in enumerate(retrieved_docs, 1):
                 context_str += (
                     f"Scheme {i}: {doc['scheme_name']}\n"
@@ -60,32 +83,34 @@ class SubsidyAgent(AgriAgentBase):
                     f"- Documents: {doc['documents']}\n"
                     f"- Notes: {doc['notes']}\n\n"
                 )
+        else:
+            context_str += "\n\n(No matching official scheme found in RAG search.)\n"
 
         # ------------------------------------------------------
-        # CASE 3 — Build AI prompt
+        # CASE 3 — Build LLM prompt
         # ------------------------------------------------------
         prompt = f"""
-        You are AgriGPT, an expert assistant on Indian agricultural subsidies and schemes.
+        You are AgriGPT, an expert on Indian agricultural subsidy and scheme information.
 
         The farmer asked:
         \"\"\"{query_clean}\"\"\"
 
         {context_str}
 
-        If the Retrieved Official Information matches the user's query, USE IT as your primary source.
-        If the context doesn't answer the question fully, rely on your general knowledge but be careful with numbers.
+        If the Retrieved Official Information matches the user's query, USE IT as the primary source.
+        If the RAG information is incomplete, rely on general knowledge (without exact numbers).
 
-        Provide accurate, clear details including:
-        1. Name of the scheme/subsidy
+        Provide:
+        1. Scheme name
         2. Central or State government
         3. Eligibility
         4. Financial benefits
         5. Application process
         6. Important notes
 
-        Style:
-        - Simple language
+        Use:
         - Bullet points
+        - Clear, simple language
         - Short sentences
         """
 
@@ -98,10 +123,6 @@ class SubsidyAgent(AgriAgentBase):
             result = f"Error retrieving subsidy details: {e}"
 
         # ------------------------------------------------------
-        # RETURN + LOG
+        # CASE 5 — Log & Return
         # ------------------------------------------------------
-        return self.respond_and_record(
-            query_clean,
-            result,
-            image_path=image_path
-        )
+        return self.respond_and_record(query_clean, result, image_path)

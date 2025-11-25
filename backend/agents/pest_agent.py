@@ -1,3 +1,5 @@
+# backend/agents/pest_agent.py
+
 from backend.services.text_service import query_groq_text
 from backend.services.vision_service import query_groq_image
 from backend.agents.agri_agent_base import AgriAgentBase
@@ -6,27 +8,20 @@ from backend.agents.agri_agent_base import AgriAgentBase
 class PestAgent(AgriAgentBase):
     """
     Pest & Disease Agent
-    --------------------
-    Handles:
-    - Image-based pest/disease identification (vision model)
-    - Text-based symptom diagnosis (LLM)
-
-    Provides:
-    - Likely diagnosis
-    - Key confirming symptoms
-    - Organic + chemical treatments
-    - Preventive steps
+    Handles both image-based and text-based diagnosis.
     """
 
     name = "PestAgent"
 
     def handle_query(self, query: str = None, image_path: str = None) -> str:
         """
-        Handles both image and text pest diagnosis.
+        FIXED:
+        - If image_path is provided, DO NOT run text-based diagnosis.
+        - Prevents duplicate PestAgent execution in multimodal mode.
         """
 
         # ------------------------------------------------------
-        # CASE 0 — No input
+        # CASE 0 — No input at all
         # ------------------------------------------------------
         if not query and not image_path:
             msg = (
@@ -40,9 +35,11 @@ class PestAgent(AgriAgentBase):
             )
 
         # ------------------------------------------------------
-        # CASE 1 — IMAGE-BASED DIAGNOSIS
+        # CASE 1 — IMAGE ALWAYS TAKES PRIORITY (FIX)
         # ------------------------------------------------------
         if image_path:
+            # Ignore text completely if image exists
+            # -> prevents duplicate calls from master_agent
             vision_prompt = """
             You are AgriGPT Vision — a crop pest and disease detection expert.
 
@@ -72,7 +69,7 @@ class PestAgent(AgriAgentBase):
             )
 
         # ------------------------------------------------------
-        # CASE 2 — TEXT-BASED DIAGNOSIS
+        # CASE 2 — TEXT-BASED DIAGNOSIS (Only when NO image)
         # ------------------------------------------------------
         query_clean = query.strip()
 

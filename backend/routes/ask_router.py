@@ -3,7 +3,6 @@
 from fastapi import (
     APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 )
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import tempfile, os, time, uuid, imghdr
 
@@ -13,6 +12,7 @@ router = APIRouter(prefix="/ask", tags=["Unified Multimodal Query"])
 
 ALLOWED_IMAGE_MIME = {"image/jpeg", "image/png"}
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024   # 8 MB
+MAX_QUERY_CHARS = 2000              # 🔐 NEW: Prevent extremely long text input
 
 
 # ----------------------------------------------------
@@ -27,26 +27,29 @@ class AskResponse(BaseModel):
 
 
 # ----------------------------------------------------
-# 1️⃣ TEXT-ONLY ENDPOINT
+# 1️⃣ TEXT-ONLY
 # ----------------------------------------------------
 @router.post("/text", response_model=AskResponse)
-async def ask_text(
-    query: str = Form(..., description="Example: 'How to increase maize yield?'")
-):
-    """
-    Handles text-only queries using multi-agent smart routing.
-    """
-
+async def ask_text(query: str = Form(...)):
     start = time.time()
     request_id = str(uuid.uuid4())
 
+    # Clean + validate
     if not query or not query.strip():
-        raise HTTPException(status_code=400, detail="Please provide a valid text query.")
+        raise HTTPException(400, "Please provide a valid text query.")
+
+    query = query.strip()
+
+    # 🔐 NEW — Length limit
+    if len(query) > MAX_QUERY_CHARS:
+        raise HTTPException(
+            413, f"Query too long. Maximum allowed is {MAX_QUERY_CHARS} characters."
+        )
 
     try:
         response = route_query(query=query, image_path=None)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AgriGPT processing error: {e}")
+        raise HTTPException(500, f"AgriGPT processing error: {e}")
 
     return AskResponse(
         request_id=request_id,
@@ -58,45 +61,43 @@ async def ask_text(
 
 
 # ----------------------------------------------------
-# 2️⃣ IMAGE-ONLY ENDPOINT
+# 2️⃣ IMAGE-ONLY
 # ----------------------------------------------------
 @router.post("/image", response_model=AskResponse)
 async def ask_image(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="Upload a crop photo (JPEG or PNG).")
+    file: UploadFile = File(...)
 ):
-    """
-    Handles image-only pest/disease diagnosis.
-    """
-
     start = time.time()
     request_id = str(uuid.uuid4())
-    tmp_path = None
+    tmp_path = ""
 
-    # Validate MIME type
+    # Declared MIME check
     if file.content_type not in ALLOWED_IMAGE_MIME:
         raise HTTPException(415, "Unsupported file format. Only JPEG/PNG allowed.")
 
     try:
-        # Read file bytes
         data = await file.read()
         if not data:
             raise HTTPException(400, "Uploaded image is empty.")
-
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, "File too large (maximum 8 MB).")
 
-        # Preserve correct extension
         ext = ".jpg" if file.content_type == "image/jpeg" else ".png"
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
 
-        # Route to master agent
+        # Real MIME verification
+        real_type = imghdr.what(tmp_path)
+        if real_type not in ("jpeg", "png"):
+            background_tasks.add_task(os.remove, tmp_path)
+            raise HTTPException(400, "Invalid or corrupted image file.")
+
+        # Process only image
         response = route_query(query=None, image_path=tmp_path)
 
-        # Cleanup after background task finishes
         background_tasks.add_task(os.remove, tmp_path)
 
         return AskResponse(
@@ -110,61 +111,85 @@ async def ask_image(
     except Exception as e:
         if tmp_path and os.path.exists(tmp_path):
             background_tasks.add_task(os.remove, tmp_path)
-        raise HTTPException(status_code=500, detail=f"Error processing image: {e}")
+        raise HTTPException(500, f"Error processing image: {e}")
 
 
 # ----------------------------------------------------
-# 3️⃣ OPTIONAL: COMBINED TEXT + IMAGE ENDPOINT
+# 3️⃣ MULTIMODAL (TEXT + IMAGE)
 # ----------------------------------------------------
 @router.post("/chat", response_model=AskResponse)
 async def ask_chat(
     background_tasks: BackgroundTasks,
-    query: str = Form(..., description="Farmer's question."),
+    query: str = Form(""),
     file: UploadFile = File(None)
 ):
-    """
-    Accepts both text query + image → triggers multimodal fusion.
-    """
-
     start = time.time()
     request_id = str(uuid.uuid4())
+    tmp_path = ""
 
-    tmp_path = None
+    query_clean = (query or "").strip()
 
-    # If no image, fallback to text-only
+    # 🔐 NEW — Only check length if text exists
+    if query_clean and len(query_clean) > MAX_QUERY_CHARS:
+        raise HTTPException(
+            413, f"Query too long. Maximum allowed is {MAX_QUERY_CHARS} characters."
+        )
+
+    # ------------------------------------------
+    # A. No image → TEXT-ONLY
+    # ------------------------------------------
     if not file:
-        response = route_query(query=query, image_path=None)
+        response = route_query(query=query_clean or None, image_path=None)
         return AskResponse(
             request_id=request_id,
             status="success",
             elapsed_ms=int((time.time() - start) * 1000),
-            input={"query": query, "image_uploaded": False},
+            input={"query": query_clean, "image_uploaded": False},
             analysis=response,
         )
 
-    # Handle image upload like the previous endpoint
+    # ------------------------------------------
+    # B. Validate Image MIME
+    # ------------------------------------------
     if file.content_type not in ALLOWED_IMAGE_MIME:
         raise HTTPException(415, "Unsupported image type. Only JPEG/PNG allowed.")
 
-    data = await file.read()
-    if not data:
-        raise HTTPException(400, "Uploaded image is empty.")
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, "File too large (maximum 8 MB).")
+    try:
+        data = await file.read()
+        if not data:
+            raise HTTPException(400, "Uploaded image is empty.")
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, "File too large (maximum 8 MB).")
 
-    ext = ".jpg" if file.content_type == "image/jpeg" else ".png"
+        ext = ".jpg" if file.content_type == "image/jpeg" else ".png"
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        tmp.write(data)
-        tmp_path = tmp.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
 
-    response = route_query(query=query, image_path=tmp_path)
-    background_tasks.add_task(os.remove, tmp_path)
+        # REAL MIME VALIDATION
+        real_type = imghdr.what(tmp_path)
+        if real_type not in ("jpeg", "png"):
+            background_tasks.add_task(os.remove, tmp_path)
+            raise HTTPException(400, "Invalid or corrupted image file.")
 
-    return AskResponse(
-        request_id=request_id,
-        status="success",
-        elapsed_ms=int((time.time() - start) * 1000),
-        input={"query": query, "image_uploaded": True},
-        analysis=response,
-    )
+        # Decide routing
+        if not query_clean:
+            response = route_query(query=None, image_path=tmp_path)
+        else:
+            response = route_query(query=query_clean, image_path=tmp_path)
+
+        background_tasks.add_task(os.remove, tmp_path)
+
+        return AskResponse(
+            request_id=request_id,
+            status="success",
+            elapsed_ms=int((time.time() - start) * 1000),
+            input={"query": query_clean, "image_uploaded": True},
+            analysis=response,
+        )
+
+    except Exception as e:
+        if tmp_path and os.path.exists(tmp_path):
+            background_tasks.add_task(os.remove, tmp_path)
+        raise HTTPException(500, f"Error processing chat request: {e}")

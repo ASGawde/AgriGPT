@@ -1,26 +1,23 @@
 # backend/agents/master_agent.py
 
 """
-Master Agent Router (v4.1 - Stable LangChain 1.x)
--------------------------------------------------
-Central orchestrator for routing text and image queries to multiple AgriGPT agents.
-Updated to use a pure Runnable Sequence routing approach compatible with LangChain 1.x+.
-
-Supports:
-- Image-only
-- Text-only
-- Combined multimodal (text + image)
-- Multi-agent routing via semantic LLM classification
+Master Agent Router (v5.1 - FINAL + OPTIMIZED)
+-----------------------------------------------
+Stable + VERIFIED FEATURES:
+- FormatterAgent runs only at the END (one LLM call)
+- Zero double-execution of PestAgent (image + multimodal fix)
+- Text-only, image-only, multimodal pipelines cleanly separated
+- Router failures fall back safely to CropAgent
+- Combines multimodal outputs before formatting (correct)
 """
 
 from __future__ import annotations
-
 from typing import Optional, List
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnableSequence
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from backend.core.langchain_tools import AGENT_DESCRIPTIONS, AGENT_REGISTRY
 from backend.core.llm_client import get_llm
@@ -28,62 +25,73 @@ from backend.services.text_service import query_groq_text
 
 router_llm = get_llm()
 
+# 🔐 NEW — prevent 100KB input from hitting LLM
+MAX_QUERY_CHARS = 2000
 
-# ---------------------------------------------------------------------------
-# ROUTING DATA STRUCTURES
-# ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------
+# ROUTING SCHEMA
+# ---------------------------------------------------------------
 class RoutingResult(BaseModel):
-    """Structured output for the routing decision."""
-    agents: List[str] = Field(
-        description="List of agent names to route the query to. Must be from the available registry."
-    )
-    reason: str = Field(
-        description="A brief explanation of the routing logic."
-    )
+    agents: List[str]
+    reason: str
 
 
 def _format_agent_descriptions() -> str:
-    """Formats agent descriptions for the prompt."""
+    """Generate router description text."""
     return "\n".join(
-        f"- {a['name']}: {a['description']}" for a in AGENT_DESCRIPTIONS
+        f"- {a['name']}: {a['description']}"
+        for a in AGENT_DESCRIPTIONS
     )
 
 
-# ---------------------------------------------------------------------------
-# MAIN ROUTER
-# ---------------------------------------------------------------------------
-def route_query(query: Optional[str] = None, image_path: Optional[str] = None) -> str:
+# ---------------------------------------------------------------
+# MAIN ROUTER ENTRY
+# ---------------------------------------------------------------
+def route_query(query: Optional[str] = None, image_path: Optional[str] = None):
     """
-    Entry point for routing any user request.
+    Universal routing entry point:
+    - Multimodal → text + image
+    - Image-only → PestAgent + formatter
+    - Text-only → LangChain router + formatter
     """
 
-    # ---------------------------------
-    # Case 1 — Combined text + image
-    # ---------------------------------
+    # Normalize early
+    if query is not None:
+        query = query.strip()
+        if query == "":
+            query = None
+
+    # 🔐 NEW — Length limit (safe for all paths)
+    if query and len(query) > MAX_QUERY_CHARS:
+        return (
+            f"Your query is too long. Maximum allowed is {MAX_QUERY_CHARS} characters.\n"
+            f"Please shorten your question and try again."
+        )
+
+    # ============================================================
+    # 1️⃣ MULTIMODAL (text + image)
+    # ============================================================
     if image_path and query:
-
-        # 1. Image → always PestAgent
         pest_agent = AGENT_REGISTRY["PestAgent"]
         pest_output = pest_agent.handle_query(query=query, image_path=image_path)
 
-        # 2. Text → multi-agent routing
+        # Router should only choose text agents
         agent_names, _ = _choose_agent_via_langchain(query)
 
         text_outputs = []
         for name in agent_names:
-            # Skip PestAgent for text if we already ran it for image (avoid redundancy),
-            # UNLESS the router specifically requested it for text reasons too.
-            if name == "PestAgent":
+            if name == "PestAgent":   # prevent double-run
                 continue
-            
+
             agent = AGENT_REGISTRY.get(name)
             if agent:
                 text_outputs.append(agent.handle_query(query=query))
 
-        merged_text = "\n\n---\n\n".join(text_outputs)
+        merged_text = "\n\n---\n\n".join(text_outputs).strip() or \
+                       "No additional text-based expert advice."
 
-        # 3. Merge both in LLM
+        # Merge multimodal result
         combined_prompt = f"""
         You are AgriGPT, a multimodal agriculture expert.
 
@@ -96,22 +104,20 @@ def route_query(query: Optional[str] = None, image_path: Optional[str] = None) -
         Expert text guidance:
         {merged_text}
 
-        Combine everything into ONE clean, simple, farmer-friendly answer.
-        Use bullet points and short sentences.
-        """
+        Combine into one simple, farmer-friendly final answer.
+        """.strip()
 
         try:
             combined = query_groq_text(combined_prompt)
         except Exception as e:
-            combined = f"Error generating multimodal final answer: {e}"
+            combined = f"Error generating final answer: {e}"
 
-        # 4. FormatterAgent final pass
         formatter = AGENT_REGISTRY["FormatterAgent"]
         return formatter.handle_query(query=combined)
 
-    # ---------------------------------
-    # Case 2 — Image-only
-    # ---------------------------------
+    # ============================================================
+    # 2️⃣ IMAGE ONLY
+    # ============================================================
     if image_path:
         pest_agent = AGENT_REGISTRY["PestAgent"]
         resp = pest_agent.handle_query(query="", image_path=image_path)
@@ -119,21 +125,21 @@ def route_query(query: Optional[str] = None, image_path: Optional[str] = None) -
         formatter = AGENT_REGISTRY["FormatterAgent"]
         return formatter.handle_query(query=resp)
 
-    # ---------------------------------
-    # Case 3 — Invalid (no query)
-    # ---------------------------------
+    # ============================================================
+    # 3️⃣ TEXT EMPTY
+    # ============================================================
     if not query:
         return "Please provide a text query or image."
 
-    # ---------------------------------
-    # Case 4 — Text-only
-    # ---------------------------------
+    # ============================================================
+    # 4️⃣ TEXT ONLY
+    # ============================================================
     return _run_langchain_text_agent(query)
 
 
-# ---------------------------------------------------------------------------
-# TEXT ROUTING
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
+# TEXT-ONLY LOGIC
+# ---------------------------------------------------------------
 def _run_langchain_text_agent(query: str) -> str:
     agent_names, reasoning = _choose_agent_via_langchain(query)
 
@@ -143,10 +149,8 @@ def _run_langchain_text_agent(query: str) -> str:
         if agent:
             outputs.append(agent.handle_query(query=query))
 
-    # Fallback if no agents ran (shouldn't happen due to default CropAgent)
     if not outputs:
-        crop_agent = AGENT_REGISTRY["CropAgent"]
-        outputs.append(crop_agent.handle_query(query=query))
+        outputs.append(AGENT_REGISTRY["CropAgent"].handle_query(query=query))
 
     merged = "\n\n---\n\n".join(outputs)
 
@@ -159,42 +163,30 @@ def _run_langchain_text_agent(query: str) -> str:
     return final
 
 
-# ---------------------------------------------------------------------------
-# AGENT SELECTION (LangChain 1.x+ Semantic Router)
-# ---------------------------------------------------------------------------
-
+# ---------------------------------------------------------------
+# ROUTER CHAIN
+# ---------------------------------------------------------------
 def _build_router_chain() -> RunnableSequence:
-    """
-    Builds the semantic router chain using LangChain 1.x+ components.
-    Returns a Runnable that takes {"query": "..."} and returns a parsed dict.
-    """
     agent_descriptions = _format_agent_descriptions()
 
-    template = """You are AgriGPT Router.
-Analyze the farmer's query using SEMANTIC understanding.
+    template = """
+    You are AgriGPT Router.
+    Choose 1 or more agents based on the query.
 
-Available agents:
-{agent_descriptions}
+    Available agents:
+    {agent_descriptions}
 
-INSTRUCTIONS:
-1. Analyze the user query carefully.
-2. Select ONE or MORE agents from the list above that can best answer the query.
-   - "My leaves have white powder and pests" -> ["PestAgent", "CropAgent"]
-   - "Why is my rice yield low?" -> ["YieldAgent"]
-   - "Subsidies for irrigation" -> ["SubsidyAgent", "IrrigationAgent"]
-3. If uncertain, default to ["CropAgent"].
+    Return ONLY valid JSON:
+    {{
+        "agents": ["Agent1", "Agent2"],
+        "reason": "short explanation"
+    }}
 
-Return JSON:
-{{
-   "agents": ["Agent1","Agent2"],
-   "reason": "short explanation"
-}}
+    {format_instructions}
 
-{format_instructions}
-
-USER QUERY:
-{query}
-"""
+    USER QUERY:
+    {query}
+    """
 
     parser = JsonOutputParser(pydantic_object=RoutingResult)
 
@@ -207,41 +199,36 @@ USER QUERY:
         }
     )
 
-    # LCEL: Prompt -> LLM -> Parser
     return prompt | router_llm | parser
 
 
+# ---------------------------------------------------------------
+# ROUTER SELECTION (SAFE + CLEANED)
+# ---------------------------------------------------------------
 def _choose_agent_via_langchain(query: str) -> tuple[list[str], str]:
-    """
-    Uses a semantic router chain to classify the query and select agents.
-    """
     try:
         chain = _build_router_chain()
-        # invoke() returns a dict because of JsonOutputParser
-        result_dict = chain.invoke({"query": query})
-        
-        # Safely access fields (result_dict is a dict, not pydantic object directly yet unless typed)
-        # JsonOutputParser returns a dict matching the schema.
-        
-        # Validate against schema manually if needed or trust parser
-        agents = result_dict.get("agents", [])
-        reason = result_dict.get("reason", "No reason provided.")
-        
-        # Ensure agents is a list
+        result = chain.invoke({"query": query})  # parsed JSON → dict
+
+        agents = result.get("agents", [])
+        reason = result.get("reason", "No reason given.")
+
+        # Normalize string → list
         if isinstance(agents, str):
             agents = [agents]
-            
-        # Filter against registry
-        final_agents = [
+
+        from backend.core.langchain_tools import NON_ROUTABLE_AGENTS
+
+        # Filter out formatter + unknown names
+        agents = [
             a for a in agents
-            if a in AGENT_REGISTRY
+            if a in AGENT_REGISTRY and a not in NON_ROUTABLE_AGENTS
         ]
 
-        if not final_agents:
-            return ["CropAgent"], "Fallback: invalid agent output or no matching agents."
+        if not agents:
+            return ["CropAgent"], "Fallback: no valid agents selected."
 
-        return final_agents, reason
+        return agents, reason
 
     except Exception as e:
-        # Fallback logic
-        return ["CropAgent"], f"Routing failed: {str(e)}"
+        return ["CropAgent"], f"Routing failed: {e}"
