@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # --- Required Keys but with safe defaults ---
     GROQ_API_KEY: str = ""
+    OPENWEATHER_API_KEY: str = ""   # ✅ ADD
     TEXT_MODEL_NAME: str = "llama-3.1-70b-versatile"
     VISION_MODEL_NAME: str = "llama-3.2-vision-preview"
 
@@ -42,3 +43,6 @@ if not settings.TEXT_MODEL_NAME:
 
 if not settings.VISION_MODEL_NAME:
     print("⚠️ WARNING: VISION_MODEL_NAME missing → using fallback.")
+
+if not settings.OPENWEATHER_API_KEY:
+    print("⚠️ WARNING: OPENWEATHER_API_KEY missing.")

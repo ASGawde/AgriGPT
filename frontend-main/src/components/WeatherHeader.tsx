@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sun, Cloud, CloudRain, Wind, Droplets, Thermometer, MapPin } from "lucide-react";
+import {
+  Sun,
+  Cloud,
+  CloudRain,
+  Wind,
+  Droplets,
+  Thermometer,
+  MapPin,
+} from "lucide-react";
 import { format } from "date-fns";
 
 interface WeatherData {
@@ -8,26 +16,35 @@ interface WeatherData {
   condition: "sunny" | "cloudy" | "rainy";
   humidity: number;
   wind: number;
+  location: string;
 }
+
+const BACKEND_URL = "http://localhost:8000";
 
 const WeatherHeader = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [weather] = useState<WeatherData>({
-    temp: 24,
-    condition: "sunny",
-    humidity: 65,
-    wind: 12,
-  });
+  const [weather, setWeather] = useState<WeatherData | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(
+          `${BACKEND_URL}/weather/current?lat=${latitude}&lon=${longitude}`
+        );
+        const data = await res.json();
+        if (!data?.error) setWeather(data);
+      },
+      () => console.warn("Location permission denied")
+    );
+
     return () => clearInterval(timer);
   }, []);
 
   const getWeatherIcon = () => {
-    switch (weather.condition) {
-      case "sunny":
-        return <Sun className="w-5 h-5 text-farm-sun" />;
+    switch (weather?.condition) {
       case "cloudy":
         return <Cloud className="w-5 h-5 text-muted-foreground" />;
       case "rainy":
@@ -37,51 +54,76 @@ const WeatherHeader = () => {
     }
   };
 
+  /* ---------------------------
+     Loading Skeleton (UX polish)
+  ---------------------------- */
+  if (!weather) {
+    return (
+      <div className="w-full py-2 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="h-10 w-80 rounded-2xl bg-muted/40 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="w-full py-2 px-4"
     >
       <div className="max-w-6xl mx-auto">
-        {/* Weather Widget Card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm"
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: "spring", stiffness: 250 }}
+          className="
+            inline-flex flex-wrap items-center gap-4
+            px-5 py-2.5
+            rounded-2xl
+            bg-card/80 backdrop-blur-md
+            border border-border/50
+            shadow-sm
+          "
         >
+
           {/* Location */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-3 border-r border-border/50">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-4 border-r border-border/50">
             <MapPin className="w-3.5 h-3.5" />
-            <span className="font-medium">Your Farm</span>
+            <span className="font-medium">{weather.location}</span>
           </div>
 
           {/* Date */}
-          <div className="text-xs text-muted-foreground pr-3 border-r border-border/50">
+          <div className="text-xs text-muted-foreground pr-4 border-r border-border/50">
             {format(currentTime, "EEE, MMM d")}
           </div>
 
-          {/* Weather Condition + Temp */}
+          {/* Temp + Condition */}
           <div className="flex items-center gap-2">
             {getWeatherIcon()}
             <div className="flex items-center gap-1">
-              <Thermometer className="w-3.5 h-3.5 text-destructive/70" />
-              <span className="text-sm font-semibold text-foreground">{weather.temp}°C</span>
+              <Thermometer className="w-4 h-4 text-destructive/70" />
+              <span className="text-sm font-semibold text-foreground">
+                {weather.temp}°C
+              </span>
             </div>
           </div>
 
           {/* Humidity */}
           <div className="hidden sm:flex items-center gap-1.5">
-            <Droplets className="w-3.5 h-3.5 text-farm-sky" />
-            <span className="text-xs font-medium text-muted-foreground">{weather.humidity}%</span>
+            <Droplets className="w-4 h-4 text-farm-sky" />
+            <span className="text-xs font-medium text-muted-foreground">
+              {weather.humidity}%
+            </span>
           </div>
 
           {/* Wind */}
           <div className="hidden md:flex items-center gap-1.5">
-            <Wind className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">{weather.wind} km/h</span>
+            <Wind className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">
+              {weather.wind} km/h
+            </span>
           </div>
         </motion.div>
       </div>

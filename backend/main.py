@@ -20,6 +20,10 @@ app.add_middleware(
 from backend.routes.health_router import router as health_router
 from backend.routes.ask_router import router as ask_router
 
+from backend.routes.weather_router import router as weather_router
+
+app.include_router(weather_router)
+
 app.include_router(health_router)
 app.include_router(ask_router)
 
