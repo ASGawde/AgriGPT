@@ -54,9 +54,7 @@ const WeatherHeader = () => {
     }
   };
 
-  /* ---------------------------
-     Loading Skeleton (UX polish)
-  ---------------------------- */
+
   if (!weather) {
     return (
       <div className="w-full py-2 px-4">
@@ -88,18 +86,15 @@ const WeatherHeader = () => {
           "
         >
 
-          {/* Location */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-4 border-r border-border/50">
             <MapPin className="w-3.5 h-3.5" />
             <span className="font-medium">{weather.location}</span>
           </div>
 
-          {/* Date */}
           <div className="text-xs text-muted-foreground pr-4 border-r border-border/50">
             {format(currentTime, "EEE, MMM d")}
           </div>
 
-          {/* Temp + Condition */}
           <div className="flex items-center gap-2">
             {getWeatherIcon()}
             <div className="flex items-center gap-1">
@@ -110,7 +105,6 @@ const WeatherHeader = () => {
             </div>
           </div>
 
-          {/* Humidity */}
           <div className="hidden sm:flex items-center gap-1.5">
             <Droplets className="w-4 h-4 text-farm-sky" />
             <span className="text-xs font-medium text-muted-foreground">
@@ -118,7 +112,6 @@ const WeatherHeader = () => {
             </span>
           </div>
 
-          {/* Wind */}
           <div className="hidden md:flex items-center gap-1.5">
             <Wind className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">

@@ -25,7 +25,7 @@ const Navbar = () => {
       className="bg-card/95 backdrop-blur-md border-b border-border sticky top-0 z-50 shadow-sm"
     >
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo */}
+
         <Link to="/" className="flex items-center gap-3 group">
           <motion.div
             whileHover={{ scale: 1.05, rotate: 5 }}
@@ -44,7 +44,6 @@ const Navbar = () => {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-secondary/50">
           {navItems.map(({ path, label, icon: Icon }) => (
             <Link key={path} to={path}>
@@ -72,7 +71,6 @@ const Navbar = () => {
           ))}
         </div>
 
-        {/* Mobile Menu Button */}
         <Button
           variant="ghost"
           size="icon"
@@ -83,7 +81,6 @@ const Navbar = () => {
         </Button>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}

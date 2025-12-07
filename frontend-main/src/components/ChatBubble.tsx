@@ -28,7 +28,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
-      {/* Avatar */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -47,7 +46,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
         )}
       </motion.div>
 
-      {/* Message bubble */}
       <div
         className={cn(
           "flex flex-col max-w-[85%] md:max-w-[75%]",
@@ -65,7 +63,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
               : "bg-card border border-border/80 text-card-foreground rounded-tl-md"
           )}
         >
-          {/* Image */}
           {message.imageUrl && (
             <motion.img
               initial={{ opacity: 0 }}
@@ -76,7 +73,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
             />
           )}
 
-          {/* Markdown Content */}
           {message.content && (
             <div
               className={cn(
@@ -111,7 +107,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
             </div>
           )}
 
-          {/* Agent tag (assistant messages only) */}
           {message.agent && !isUser && (
             <div className="flex items-center gap-1.5 text-xs mt-3 pt-2 border-t border-border/30 text-muted-foreground">
               <Sparkles className="w-3 h-3" />
@@ -120,7 +115,6 @@ const ChatBubble = ({ message, index = 0 }: ChatBubbleProps) => {
           )}
         </motion.div>
 
-        {/* Timestamp */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

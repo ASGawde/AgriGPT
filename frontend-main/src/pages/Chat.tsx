@@ -72,20 +72,17 @@ const Chat = () => {
     }
   };
 
-  /** Clear chat */
   const handleClear = () => {
     clearChat();
     toast.success("Chat cleared");
   };
 
-  /** Handle suggestion click from empty state */
   const handleSuggestionClick = (text: string) => {
     handleSend(text);
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)]">
-      {/* Chat messages area */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto scrollbar-hide"

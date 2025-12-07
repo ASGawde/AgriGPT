@@ -13,7 +13,6 @@ const Loader = ({ message = "Processing your request..." }: LoaderProps) => {
       exit={{ opacity: 0, y: -10 }}
       className="flex items-start gap-3 mb-5"
     >
-      {/* Avatar */}
       <motion.div
         animate={{ 
           scale: [1, 1.1, 1],
@@ -28,11 +27,9 @@ const Loader = ({ message = "Processing your request..." }: LoaderProps) => {
         <Sprout className="w-5 h-5 text-accent-foreground" />
       </motion.div>
 
-      {/* Typing indicator */}
       <div className="flex flex-col items-start">
         <div className="bg-card border border-border/80 rounded-2xl rounded-tl-md px-5 py-4 shadow-md">
           <div className="flex items-center gap-3">
-            {/* Animated dots */}
             <div className="flex items-center gap-1.5">
               {[0, 1, 2].map((i) => (
                 <motion.div
@@ -52,7 +49,6 @@ const Loader = ({ message = "Processing your request..." }: LoaderProps) => {
               ))}
             </div>
 
-            {/* Message */}
             <motion.p
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -63,7 +59,6 @@ const Loader = ({ message = "Processing your request..." }: LoaderProps) => {
           </div>
         </div>
 
-        {/* Shimmer effect */}
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: "100%" }}

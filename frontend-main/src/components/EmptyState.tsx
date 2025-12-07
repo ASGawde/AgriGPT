@@ -33,7 +33,6 @@ const EmptyState = ({ onSuggestionClick }: EmptyStateProps) => {
       animate={{ opacity: 1 }}
       className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
     >
-      {/* Hero icon */}
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
@@ -45,7 +44,6 @@ const EmptyState = ({ onSuggestionClick }: EmptyStateProps) => {
         </div>
       </motion.div>
 
-      {/* Title */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -61,7 +59,6 @@ const EmptyState = ({ onSuggestionClick }: EmptyStateProps) => {
         </p>
       </motion.div>
 
-      {/* Feature cards */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -99,7 +96,6 @@ const EmptyState = ({ onSuggestionClick }: EmptyStateProps) => {
         </motion.div>
       </motion.div>
 
-      {/* Suggestion chips */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -76,7 +76,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
 
   const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    // Auto-resize textarea
     const textarea = e.target;
     textarea.style.height = "auto";
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
@@ -92,7 +91,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
       className="border-t border-border/50 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm p-4"
     >
       <div className="max-w-4xl mx-auto">
-        {/* Image preview */}
         <AnimatePresence>
           {imagePreview && (
             <motion.div
@@ -120,7 +118,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
           )}
         </AnimatePresence>
 
-        {/* Main input container - ChatGPT style */}
         <motion.div
           animate={{
             boxShadow: isFocused 
@@ -140,7 +137,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
             className="hidden"
           />
 
-          {/* Attachment button */}
           <Button
             type="button"
             size="icon-sm"
@@ -153,7 +149,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
             <Paperclip className="w-5 h-5" />
           </Button>
 
-          {/* Textarea */}
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
@@ -175,7 +170,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
             />
           </div>
 
-          {/* Send button */}
           <motion.div
             animate={{ 
               scale: canSend ? 1 : 0.9,
@@ -208,7 +202,6 @@ const ChatInput = ({ onSend, isLoading, onClear }: ChatInputProps) => {
           </motion.div>
         </motion.div>
 
-        {/* Bottom hint */}
         <div className="flex items-center justify-between mt-2 px-2">
           <p className="text-[10px] text-muted-foreground">
             <kbd className="px-1.5 py-0.5 bg-secondary rounded text-[9px] font-mono">Enter</kbd> to send · <kbd className="px-1.5 py-0.5 bg-secondary rounded text-[9px] font-mono">Shift+Enter</kbd> for new line

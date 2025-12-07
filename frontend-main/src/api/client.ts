@@ -3,20 +3,14 @@ import axios, { AxiosError } from "axios";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:8000";
 
-/**
- * Create Axios instance
- */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 60000, // AI responses can take long
 });
 
-/**
- * REQUEST INTERCEPTOR
- */
+
 apiClient.interceptors.request.use(
   (config) => {
-    // Remove default JSON header for FormData requests
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
     }
@@ -34,9 +28,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-/**
- * RESPONSE INTERCEPTOR
- */
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
