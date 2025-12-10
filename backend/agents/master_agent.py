@@ -34,7 +34,7 @@ def route_query(
     chat_history_list = get_chat_history(session_id)
     chat_history_str = format_history_for_prompt(chat_history_list)
 
-    # IMAGE-ONLY (Direct Diagnosis)
+    # Image only
     if image_path and not clean_query:
         pest_output = registry["PestAgent"].handle_query(
             query="",
@@ -68,7 +68,7 @@ def route_query(
     if not clean_query:
         return "Please ask an agriculture-related question."
 
-    # TEXT-ONLY OR MULTIMODAL
+    # Text only or Multimodal
     routed = llm_route_with_scores(clean_query, registry, chat_history_str)
 
     if not routed:
@@ -101,7 +101,6 @@ def route_query(
         if agent_name not in registry:
             continue
 
-        # Pass History to Agent
         if agent_name == "PestAgent" and image_path:
             output = registry[agent_name].handle_query(
                 query=clean_query, 
@@ -144,8 +143,6 @@ def route_query(
 
     return formatted_response
 
-
-# LLM ROUTER WITH SCORING & THRESHOLDS
 def llm_route_with_scores(
     query: str,
     registry: Dict[str, Any],

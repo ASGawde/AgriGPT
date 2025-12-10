@@ -8,7 +8,6 @@ from backend.services.history_service import log_interaction
 class AgriAgentBase(ABC):
     name: str = "AgriAgentBase"
 
-    # Every agent must follow this signature
     @abstractmethod
     def handle_query(
         self,
@@ -35,7 +34,6 @@ class AgriAgentBase(ABC):
             return "image"
         return "text"
 
-    #  ACTUAL LOGGING
     def record(
         self,
         query,
@@ -63,7 +61,7 @@ class AgriAgentBase(ABC):
         try:
             log_interaction(entry)
         except Exception:
-            pass  # Never break execution because of logging
+            pass  
 
 
     def respond_and_record(

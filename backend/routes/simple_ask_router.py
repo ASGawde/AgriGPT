@@ -2,7 +2,6 @@ from fastapi import APIRouter, Form
 
 router = APIRouter(prefix="/simple", tags=["Simple"])
 
-
 @router.post("/echo")
 def simple_echo(text: str = Form(...)):
     """
@@ -14,7 +13,6 @@ def simple_echo(text: str = Form(...)):
         "echo": text.upper(),
         "message": "This endpoint has ZERO dependencies on agents"
     }
-
 
 @router.post("/fake-analysis")
 def fake_analysis(query: str = Form(...)):

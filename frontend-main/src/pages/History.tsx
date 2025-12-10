@@ -106,7 +106,6 @@ const History = () => {
                         <Icon className={cn("w-5 h-5", typeInfo.color)} />
                       </div>
 
-
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
                           <span className={cn(
@@ -121,13 +120,11 @@ const History = () => {
                           </span>
                         </div>
 
-    
                         {msg.content && (
                           <p className="text-sm font-medium text-foreground mb-2 line-clamp-2">
                             {msg.content}
                           </p>
                         )}
-
 
                         {assistantReply && (
                           <p className="text-xs text-muted-foreground line-clamp-2 pl-3 border-l-2 border-primary/30">
@@ -135,7 +132,6 @@ const History = () => {
                           </p>
                         )}
 
-                \
                         {msg.imageUrl && (
                           <img
                             src={msg.imageUrl}

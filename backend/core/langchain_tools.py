@@ -10,7 +10,7 @@ from backend.agents.formatter_agent import FormatterAgent
 
 AgentRegistry: TypeAlias = Dict[str, object]
 
-# FormatterAgent must NEVER be selected by router
+# FormatterAgent must never be selected by router
 NON_ROUTABLE_AGENTS = {"FormatterAgent"}
 
 def get_agent_registry() -> AgentRegistry:
@@ -26,7 +26,7 @@ def get_agent_registry() -> AgentRegistry:
         "FormatterAgent": FormatterAgent(),
     }
 
-# ROUTER METADATA 
+# Router Metadata
 AGENT_DESCRIPTIONS: List[dict] = [
     {
         "name": "CropAgent",

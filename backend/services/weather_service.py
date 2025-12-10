@@ -3,7 +3,6 @@ from backend.core.config import settings
 
 OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 
-
 def get_current_weather(lat: float, lon: float) -> dict:
     if not settings.OPENWEATHER_API_KEY:
         return {"error": "Weather service not configured"}
@@ -34,7 +33,7 @@ def get_current_weather(lat: float, lon: float) -> dict:
             "location": data.get("name", "Your Location"),
             "temp": round(data["main"]["temp"]),
             "humidity": data["main"]["humidity"],
-            "wind": round(data["wind"]["speed"] * 3.6),  # m/s → km/h
+            "wind": round(data["wind"]["speed"] * 3.6), 
             "condition": condition,
         }
 

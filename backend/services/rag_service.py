@@ -11,7 +11,7 @@ from langchain_core.documents import Document
 DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/subsidies.json")
 VECTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "../data/faiss_index")
 
-# Query cleaning (FAISS-safe)
+# Query cleaning
 def _clean_query(text: str) -> str:
     if not isinstance(text, str):
         return ""
@@ -35,7 +35,6 @@ class RAG:
         return cls._instance
 
     def initialize(self):
-        #  Slightly stronger embeddings (better semantic recall)
         self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L12-v2"
         )
@@ -114,7 +113,7 @@ class RAG:
         results: List[Dict[str, str]] = []
 
         for doc, score in docs_with_scores:
-            #  Distance threshold (tunable, conservative)
+            #  Distance threshold 
             if score > 0.7:
                 continue
 
@@ -131,6 +130,4 @@ class RAG:
 
         return results
 
-
-#  Singleton instance
 rag_service = RAG()

@@ -14,7 +14,7 @@ class PestAgent(AgriAgentBase):
 
     def handle_query(self, query: str = None, image_path: str = None, chat_history: str = None) -> str:
 
-        # NO INPUT
+        # No input
         if not query and not image_path:
             response = (
                 "Please upload a crop image or describe visible symptoms such as "
@@ -22,7 +22,7 @@ class PestAgent(AgriAgentBase):
             )
             return self.respond_and_record("", response, image_path)
 
-        # IMAGE-BASED OBSERVATION ONLY
+        # Image based observations only
         if image_path:
             vision_prompt = (
                 "You are AgriGPT Vision, an expert agricultural diagnostics assistant. "
@@ -44,7 +44,6 @@ class PestAgent(AgriAgentBase):
                 image_path=image_path,
             )
 
-        # TEXT-BASED SYMPTOM ANALYSIS
         clean_query = query.strip()
 
         text_prompt = (

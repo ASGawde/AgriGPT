@@ -9,7 +9,6 @@ router = APIRouter(prefix="/health", tags=["Health"])
 
 START_TIME = time.time()
 
-
 def _format_uptime(seconds: int) -> str:
     """Convert seconds to HH:MM:SS."""
     return str(timedelta(seconds=seconds))

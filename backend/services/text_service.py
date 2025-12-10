@@ -8,7 +8,6 @@ MAX_RETRIES = 3
 RETRY_BACKOFF = (1, 2, 4)
 MAX_PROMPT_CHARS = 4000
 
-
 def _normalize_output(output: Optional[str]) -> str:
     """Normalize model output safely into plain text."""
     if output is None:

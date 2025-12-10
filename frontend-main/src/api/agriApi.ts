@@ -1,5 +1,4 @@
 import { apiClient } from "./client";
-import { v4 as uuidv4 } from 'uuid'; 
 
 export interface ApiResponse {
   analysis: string;
@@ -27,8 +26,6 @@ function getSessionId(): string {
 
 function buildFormData(payload: FormDataPayload): FormData {
   const fd = new FormData();
-  
-  // Auto-inject session_id
   fd.append("session_id", getSessionId());
 
   Object.entries(payload).forEach(([key, value]) => {
@@ -51,7 +48,6 @@ async function postFormData(
 
 // Text-only request
 export const askText = (query: string): Promise<ApiResponse> => {
-  // We reuse buildFormData to ensure session_id is added
   const payload = buildFormData({ query: query.trim() });
   return postFormData("/ask/text", payload);
 }
@@ -60,7 +56,7 @@ export const askText = (query: string): Promise<ApiResponse> => {
 export const askImage = (image: File): Promise<ApiResponse> =>
   postFormData("/ask/image", buildFormData({ file: image }));
 
-// Multimodal: text + image 
+// Multimodal
 export const askChat = (
   query: string,
   image?: File

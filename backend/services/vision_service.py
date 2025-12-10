@@ -7,7 +7,6 @@ from typing import Any
 from groq import Groq
 from backend.core.config import settings
 
-
 MAX_RETRIES = 3
 RETRY_BACKOFF = (1, 2, 4)
 MAX_IMAGE_BYTES = 8 * 1024 * 1024

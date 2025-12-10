@@ -21,3 +21,6 @@ __pycache__/
 *.pyd
 *.pyd
 .pytest_cache/
+
+.env.example
+.DS_Store
