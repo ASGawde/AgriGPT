@@ -44,6 +44,11 @@ Unlike normal chatbots, AgriGPT decomposes user's complex intent and coordinates
 - Weather-aware UI header
 - Conversation history viewer
 
+### LLM Models
+
+ - Text Model: llama-3.1-70b-versatile
+ - Vision Model: llama-3.2-vision-preview
+
 ---
 
 ##  Agent-Based Design:
